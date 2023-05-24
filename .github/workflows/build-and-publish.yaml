@@ -36,9 +36,6 @@ jobs:
 
       - name: Setup SSH config for builders
         env:
-          BUILDER_AARCH64_SSH_CONFIG: ${{ secrets.BUILDER_AARCH64_SSH_CONFIG }}
-          BUILDER_AARCH64_SSH_KEY: ${{ secrets.BUILDER_AARCH64_SSH_KEY }}
-          BUILDER_AARCH64_SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_AARCH64_SSH_KNOWN_HOSTS }}
           BUILDER_PPC64LE_SSH_CONFIG: ${{ secrets.BUILDER_PPC64LE_SSH_CONFIG }}
           BUILDER_PPC64LE_SSH_KEY: ${{ secrets.BUILDER_PPC64LE_SSH_KEY }}
           BUILDER_PPC64LE_SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_PPC64LE_SSH_KNOWN_HOSTS }}
@@ -46,9 +43,6 @@ jobs:
           mkdir ~/.ssh
           chmod 700 ~/.ssh
 
-          touch ~/.ssh/id_builder_aarch64
-          chmod 600 ~/.ssh/id_builder_aarch64
-          echo "$BUILDER_AARCH64_SSH_KEY" >~/.ssh/id_builder_aarch64
 
           touch ~/.ssh/id_builder_ppc64le
           chmod 600 ~/.ssh/id_builder_ppc64le
@@ -57,18 +51,13 @@ jobs:
           touch ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
           cat >~/.ssh/known_hosts <<END
-          $BUILDER_AARCH64_SSH_KNOWN_HOSTS
           $BUILDER_PPC64LE_SSH_KNOWN_HOSTS
           END
 
           touch ~/.ssh/config
           chmod 600 ~/.ssh/config
           cat >~/.ssh/config <<END
-          Host builder-aarch64
-            IdentityFile "~/.ssh/id_builder_aarch64"
-          $BUILDER_AARCH64_SSH_CONFIG
-
-          Host builder-amd64
+          Host builder-ppc64le
             IdentityFile "~/.ssh/id_builder_ppc64le"
           $BUILDER_PPC64LE_SSH_CONFIG
           END
@@ -76,10 +65,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
         with:
-          platforms: linux/amd64,linux/s390x
+          platforms: linux/amd64,linux/s390x,linux/arm64
           append: |
-            - endpoint: ssh://builder-aarch64
-              platforms: linux/arm64
             - endpoint: ssh://builder-ppc64le
               platforms: linux/ppc64le
 
