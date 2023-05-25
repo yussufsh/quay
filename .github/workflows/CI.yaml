@@ -49,24 +49,64 @@ jobs:
   unit:
     name: Unit Test
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        platform: ['amd64','ppc64le']
     steps:
 
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.9
-
-    - name: Install dependencies
+    - name: Setup SSH config for builders
+      env:
+        BUILDER_PPC64LE_SSH_CONFIG: ${{ secrets.BUILDER_PPC64LE_SSH_CONFIG }}
+        BUILDER_PPC64LE_SSH_KEY: ${{ secrets.BUILDER_PPC64LE_SSH_KEY }}
+        BUILDER_PPC64LE_SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_PPC64LE_SSH_KNOWN_HOSTS }}
       run: |
-        sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        cat requirements-dev.txt | grep tox | xargs pip install
+        mkdir ~/.ssh
+        chmod 700 ~/.ssh
 
-    - name: tox
-      run: tox -e py39-unit
+
+        touch ~/.ssh/id_builder_ppc64le
+        chmod 600 ~/.ssh/id_builder_ppc64le
+        echo "$BUILDER_PPC64LE_SSH_KEY" >~/.ssh/id_builder_ppc64le
+
+        touch ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+        cat >~/.ssh/known_hosts <<END
+        $BUILDER_PPC64LE_SSH_KNOWN_HOSTS
+        END
+
+        touch ~/.ssh/config
+        chmod 600 ~/.ssh/config
+        cat >~/.ssh/config <<END
+        Host builder-ppc64le
+          IdentityFile "~/.ssh/id_builder_ppc64le"
+        $BUILDER_PPC64LE_SSH_CONFIG
+        END
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+      with:
+        platforms: linux/amd64
+        append: |
+          - endpoint: ssh://builder-ppc64le
+            platforms: linux/ppc64le
+
+    - name: Install dependencies and run tests
+      run: >-
+        docker run
+        --rm
+        --platform linux/${{ matrix.platform }}
+        -v ${{ github.workspace }}:/build
+        -w /build
+        ubuntu:22.04
+        /bin/bash -c '
+        apt-get -y update;
+        apt-get -y install libgpgme-dev libldap2-dev libsasl2-dev swig python3.9 python3-pip findutils;
+        cat requirements-dev.txt | grep tox | xargs pip install;
+        tox -e py39-unit;'
+
 
   types:
     name: Types Test
@@ -172,7 +212,7 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v3
-    
+
     - name: Seed Database
       run: cd web && npm run quay:seed
 
@@ -191,7 +231,7 @@ jobs:
         docker restart quay-quay
         sleep 30
         make integration-test
-    
+
     - name: Cypress run
       uses: cypress-io/github-action@v5
       with:
