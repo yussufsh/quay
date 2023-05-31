@@ -31,9 +31,6 @@ jobs:
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
           echo "::set-output name=version::${BRANCH_NAME/${{ env.BRANCH_PREFIX }}/}"
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-
       - name: Setup SSH config for builders
         env:
           BUILDER_PPC64LE_SSH_CONFIG: ${{ secrets.BUILDER_PPC64LE_SSH_CONFIG }}
@@ -65,7 +62,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
         with:
-          platforms: linux/amd64,linux/s390x,linux/arm64
+          platforms: linux/amd64
           append: |
             - endpoint: ssh://builder-ppc64le
               platforms: linux/ppc64le
@@ -83,7 +80,7 @@ jobs:
         env:
           TAG: ${{ steps.version-from-branch.outputs.version }}${{ env.TAG_SUFFIX }}
         with:
-          platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
-          push: true
+          platforms: linux/amd64,linux/ppc64le
+          push: false
           tags: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.event.inputs.tag || env.TAG }}
 
