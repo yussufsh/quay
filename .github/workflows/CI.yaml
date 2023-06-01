@@ -58,42 +58,12 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Setup SSH config for builders
-      env:
-        BUILDER_PPC64LE_SSH_CONFIG: ${{ secrets.BUILDER_PPC64LE_SSH_CONFIG }}
-        BUILDER_PPC64LE_SSH_KEY: ${{ secrets.BUILDER_PPC64LE_SSH_KEY }}
-        BUILDER_PPC64LE_SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_PPC64LE_SSH_KNOWN_HOSTS }}
-      run: |
-        mkdir ~/.ssh
-        chmod 700 ~/.ssh
-
-
-        touch ~/.ssh/id_builder_ppc64le
-        chmod 600 ~/.ssh/id_builder_ppc64le
-        echo "$BUILDER_PPC64LE_SSH_KEY" >~/.ssh/id_builder_ppc64le
-
-        touch ~/.ssh/known_hosts
-        chmod 600 ~/.ssh/known_hosts
-        cat >~/.ssh/known_hosts <<END
-        $BUILDER_PPC64LE_SSH_KNOWN_HOSTS
-        END
-
-        touch ~/.ssh/config
-        chmod 600 ~/.ssh/config
-        cat >~/.ssh/config <<END
-        Host builder-ppc64le
-          ServerAliveInterval 600
-          ServerAliveCountMax 10
-          IdentityFile "~/.ssh/id_builder_ppc64le"
-        $BUILDER_PPC64LE_SSH_CONFIG
-        END
-
-    - name: Create docker context
-      if: ${{ matrix.platform  != 'amd64' }}
-      run: |
-        docker context create ${{ matrix.platform }} --description "Node ${{ matrix.platform }}" --docker "host=ssh://builder-${{ matrix.platform }}"
-        docker context use ${{ matrix.platform }}
-
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+      with:
+        platforms: linux/amd64,linux/ppc64le
     - name: Install dependencies and run tests
       run: >-
         docker run
