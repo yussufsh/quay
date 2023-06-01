@@ -82,6 +82,8 @@ jobs:
         chmod 600 ~/.ssh/config
         cat >~/.ssh/config <<END
         Host builder-ppc64le
+          ServerAliveInterval 600
+          ServerAliveCountMax 10
           IdentityFile "~/.ssh/id_builder_ppc64le"
         $BUILDER_PPC64LE_SSH_CONFIG
         END
