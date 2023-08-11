@@ -33,53 +33,32 @@ jobs:
       
       - name: Setup SSH config for builders
         env:
-          BUILDER_AARCH64_SSH_CONFIG: ${{ secrets.BUILDER_AARCH64_SSH_CONFIG }}
-          BUILDER_AARCH64_SSH_KEY: ${{ secrets.BUILDER_AARCH64_SSH_KEY }}
-          BUILDER_AARCH64_SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_AARCH64_SSH_KNOWN_HOSTS }}
           BUILDER_PPC64LE_SSH_CONFIG: ${{ secrets.BUILDER_PPC64LE_SSH_CONFIG }}
           BUILDER_PPC64LE_SSH_KEY: ${{ secrets.BUILDER_PPC64LE_SSH_KEY }}
           BUILDER_PPC64LE_SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_PPC64LE_SSH_KNOWN_HOSTS }}
-          BUILDER_S390X_SSH_HOST: ${{ secrets.BUILDER_S390X_SSH_HOST }}
-          BUILDER_S390X_SSH_KEY: ${{ secrets.BUILDER_S390X_SSH_KEY }}
         run: |
           mkdir ~/.ssh
           chmod 700 ~/.ssh
-
-          touch ~/.ssh/id_builder_aarch64
-          chmod 600 ~/.ssh/id_builder_aarch64
-          echo "$BUILDER_AARCH64_SSH_KEY" >~/.ssh/id_builder_aarch64
 
           touch ~/.ssh/id_builder_ppc64le
           chmod 600 ~/.ssh/id_builder_ppc64le
           echo "$BUILDER_PPC64LE_SSH_KEY" >~/.ssh/id_builder_ppc64le
           
-          touch ~/.ssh/id_builder_s390x
-          chmod 600 ~/.ssh/id_builder_s390x
-          echo "$BUILDER_S390X_SSH_KEY" > ~/.ssh/id_builder_s390x
           
           touch ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
           cat >~/.ssh/known_hosts <<END
-          $BUILDER_AARCH64_SSH_KNOWN_HOSTS
           $BUILDER_PPC64LE_SSH_KNOWN_HOSTS
           END
 
           touch ~/.ssh/config
           chmod 600 ~/.ssh/config
           cat >~/.ssh/config <<END
-          Host builder-aarch64
-            IdentityFile "~/.ssh/id_builder_aarch64"
-          $BUILDER_AARCH64_SSH_CONFIG
 
           Host builder-ppc64le
             IdentityFile "~/.ssh/id_builder_ppc64le"
           $BUILDER_PPC64LE_SSH_CONFIG
           
-          Host builder-s390x
-            StrictHostKeyChecking no
-            HostName $BUILDER_S390X_SSH_HOST
-            User root
-            IdentityFile "~/.ssh/id_builder_s390x"
           END
 
       - name: Set up Docker Buildx
@@ -88,19 +67,9 @@ jobs:
           version: v0.11.0-rc2
           platforms: linux/amd64
           append: |
-            - endpoint: ssh://builder-aarch64
-              platforms: linux/arm64
             - endpoint: ssh://builder-ppc64le
               platforms: linux/ppc64le
-            - endpoint: ssh://builder-s390x
-              platforms: linux/s390x
 
-      - name: Login to Quay.io
-        uses: docker/login-action@v1
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USER }}
-          password: ${{ secrets.QUAY_TOKEN }}
 
       - name: Build and push
         id: docker_build
@@ -108,7 +77,7 @@ jobs:
         env:
           TAG: ${{ steps.version-from-branch.outputs.version }}${{ env.TAG_SUFFIX }}
         with:
-          platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
-          push: true
+          platforms: linux/amd64,linux/ppc64le
+          push: false
           tags: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.event.inputs.tag || env.TAG }}
 
